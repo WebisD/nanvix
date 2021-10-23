@@ -47,11 +47,7 @@
 
 # Builds everything.
 all: cat chgrp chmod chown cp echo kill ln login ls mv nice pwd rm stat sync \
-	 touch tsh ps clear nim sleep sort
-
-# Builds cat.
-sort: 
-	$(CC) $(CFLAGS) $(LDFLAGS) sort/*.c -o $(UBINDIR)/sort $(LIBDIR)/libc.a
+	 touch tsh ps clear nim sleep rmdir mkdir sort
 
 # Builds cat.
 cat: 
@@ -117,7 +113,9 @@ rm:
 rmdir: 
 	$(CC) $(CFLAGS) $(LDFLAGS) rmdir/*.c -o $(UBINDIR)/rmdir $(LIBDIR)/libc.a
 	
-# Builds stat.
+sort: 
+	$(CC) $(CFLAGS) $(LDFLAGS) sort/*.c -o $(UBINDIR)/sort $(LIBDIR)/libc.a
+
 stat: 
 	$(CC) $(CFLAGS) $(LDFLAGS) stat/*.c -o $(UBINDIR)/stat $(LIBDIR)/libc.a
 	

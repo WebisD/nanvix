@@ -96,6 +96,16 @@ static void getargs(int argc, char *const argv[])
 	}
 }
 
+// int mkdir(char* dirname, mode_t mode) 
+// {
+// 	return -1;
+// }
+
+int mkdir() 
+{
+	return -1;
+}
+
 /*
  * Creates directories
  */
@@ -103,12 +113,16 @@ int main(int argc, char *const argv[])
 {
 	getargs(argc, argv);
 	
+	fprintf(stderr, "Main mkdir\n");
+
 	/* Failed to mkdir(). */
-	if (mkdir(args.dirname, S_IRWXU|S_IRWXG|S_IRWXO) < 0)
+	/* S_IRWXU|S_IRWXG|S_IRWXO */
+	// if (mkdir(args.dirname, S_IRWXU|S_IRWXG|S_IRWXO) < 0)
+	if (mkdir() < 0)
 	{
 		fprintf(stderr, "mkdir: cannot mkdir()\n");
 		return (EXIT_FAILURE);
 	}
-	
+
 	return (EXIT_SUCCESS);
 }

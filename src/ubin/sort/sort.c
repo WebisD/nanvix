@@ -1,22 +1,3 @@
-/*
- * Copyright(C) 2011-2016 Pedro H. Penna <pedrohenriquepenna@gmail.com>
- * 
- * This file is part of Nanvix.
- * 
- * Nanvix is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- * 
- * Nanvix is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with Nanvix. If not, see <http://www.gnu.org/licenses/>.
- */
- 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
@@ -26,96 +7,130 @@
 #include <string.h>
 #include <unistd.h>
 
-/* Software versioning. */
-#define VERSION_MAJOR 1 /* Major version. */
-#define VERSION_MINOR 0 /* Minor version. */
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
+#define COMMAND_NAME "sort"
+#define ENABLE_LOGS 0
 
-/* Program arguments. */
-static char *const *filenames; /* Files to concatenate.           */
-static int nfiles = 0;         /* Number of files to concatenate. */
+static char *const *filenames;
+static int nfiles = 0;        
 
-typedef struct GetNumberOfLinesResponse {
-	int lines;
-} GetNumberOfLinesResponse;
+/*
+1. Criar struct FILE, contendo nome, valor, numero de linhas e quebras de linha
+2. Aplicar o memcpy() em vez do strcat
+3. Tentar ler mais que 1024 bytes
+*/
 
-static void sortLines(char** input, int lines)
-{
-	char temp[BUFSIZ];
+typedef struct {
+	int pointer;
+	int mode;
+	char* name;
+	char** lines;
+	int numberOfLines;
+	int* linebreaks;
+} File;
 
-	int i=0, j=0;
 
-	for(i=0; i<lines; i++){
-		for(j=0; j<lines-1-i; j++){
-			if(strcmp(input[j], input[j+1]) > 0){
-				strcpy(temp, input[j]);
-				strcpy(input[j], input[j+1]);
-				strcpy(input[j+1], temp);
-			}
-		}
+static void openFile(File* file, char* filename, int flag);
+static ssize_t readFromFile(File* file, char* buf, ssize_t size);
+static void getNumberOfLines(File* file);
+static void extractLinesFromFile(File* file);
+static void sortLines(File* file);
+static void printLines(File* file);
+static void sort(char *filename);
+static void log(const char* format, ...);
+static void freeFile(File* file);
+static void resetFile(File* file);
+
+static void log(const char* format, ...) { 
+	if (ENABLE_LOGS) {
+		va_list args;
+	
+		va_start(args, format);
+		vfprintf(stdout, format, args);
+		va_end(args);
 	}
 }
 
-static GetNumberOfLinesResponse getNumberOfLines(char *filename)
-{
-	GetNumberOfLinesResponse resp = {1};
-    int fd;
-	char buf[BUFSIZ];
-	ssize_t n, nread; 
+static void openFile(File* file, char* filename, int flag) {
+	log("Opening %s...\n", filename);
 
-    fd = open(filename, O_RDONLY);
+	file->pointer = open(filename, flag);
 
-	if (fd < 0)
+	file->name = filename;
+	file->mode = flag;
+
+	if (file->pointer < 0)
 	{
-		fprintf(stderr, "cat: cannot open %s\n", filename);
-		return resp;
+		fprintf(stderr, "%s: cannot open %s\n", COMMAND_NAME, filename);
+		exit(errno);
 	}
 
+	log("Opened %s!\n", filename);
+}
+
+static ssize_t readFromFile(File* file, char* buf, ssize_t size) {
+	log("Reading from %s...\n", file->name);
+
+	ssize_t bytesRead;
+	if ((bytesRead = read(file->pointer, buf, size)) < 0) {
+		fprintf(stderr, "%s: cannot read %s\n", COMMAND_NAME, file->name);
+	}
+
+	log("Read %s!\n", file->name);
+
+	return bytesRead;
+}
+
+static void getNumberOfLines(File* file)
+{
+	log("Getting number of lines...\n");
+
+	resetFile(file);
+
+	file->numberOfLines = 1;
+	char buffer[BUFSIZ];
+	ssize_t bytesRead; 
+
+	int i = 0;
+
 	do {
-		if ((nread = read(fd, buf, BUFSIZ)) < 0) {
-			fprintf(stderr, "cat: cannot read %s\n", filename);
-			resp.lines = -1;
-			return resp;
-		}
+		bytesRead = readFromFile(file, buffer, BUFSIZ);
+
+		log("bytes read NL: %d\n", bytesRead);
 		
-		n = nread;
+		if (bytesRead < 0) {
+			file->numberOfLines = -1;
+		}
 
-		int i = 0;
+		i = 0;
 
-		while (i < nread) {
-			if (buf[i] == '\n') {
-				resp.lines++;
+		while (i < bytesRead) {
+			if (buffer[i] == '\n') {
+				file->numberOfLines++;
 			}
 			i++;
 		}
 
-	} while (n == BUFSIZ);
+	} while (bytesRead == BUFSIZ);
 
-	close(fd);
-
-    return resp;
+	log("Got number of lines!\n");
 }
 
-static void sort(char *filename)
-{
-    GetNumberOfLinesResponse resp = getNumberOfLines(filename);
+static void getLineBreaks(File* file) {
+	log("Getting line breaks...\n");
 
-	char** fileLines = malloc(resp.lines*sizeof(char*));
-	int* breakpoints = malloc((resp.lines+1)*sizeof(int));
-	int fd;
-	char buf[BUFSIZ];
-	ssize_t n, nread; 
+	resetFile(file);
 
-    fd = open(filename, O_RDONLY);
+	char buffer[BUFSIZ];
+	ssize_t bytesRead;
 
-	if (fd < 0)
-	{
-		fprintf(stderr, "cat: cannot open %s\n", filename);
-		return;
-	}
+	log("Number of lines: %d\n", file->numberOfLines);
+	file->linebreaks = malloc((file->numberOfLines+1) * sizeof(int));
 
-	breakpoints[0] = 0;
-	int i = 0, j= 1;
-
+	file->linebreaks[0] = 0;
+	int byteIndex = 0, linebreakIndex= 1;
+	
 	/*
 	buffer de 10bytes
 
@@ -127,76 +142,146 @@ static void sort(char *filename)
 	i tá errado, dar uma olhada dps
 	*/
 	do {
-		if ((nread = read(fd, buf, BUFSIZ)) < 0) {
-			fprintf(stderr, "cat: cannot read %s\n", filename);
-			return;
-		}
-		
-		n = nread;
+		bytesRead = readFromFile(file, buffer, BUFSIZ);
+		byteIndex = 0;
 
-		i = 0;
-		while (i < nread) {
-			if (buf[i] == '\n') {
-				breakpoints[j] = i;
-				j++;
+		while (byteIndex < bytesRead) {
+			if (buffer[byteIndex] == '\n') {
+				file->linebreaks[linebreakIndex] = byteIndex;
+				linebreakIndex++;
 			}
-			i++;
+			byteIndex++;
 		}
+	} while (bytesRead == BUFSIZ);
 
-	} while (n == BUFSIZ);
-
-	if (buf[i] != '\n') {
-		breakpoints[resp.lines] = i;
+	if (buffer[byteIndex] != '\n') {
+		file->linebreaks[file->numberOfLines] = byteIndex;
 	}
 
+	log("Got line breaks!\n");
+}
+
+static void extractLinesFromFile(File* file) {
+	log("Extracting lines from file...\n");
+
+	resetFile(file);
+
+	char buffer[BUFSIZ];
+	ssize_t bytesRead;
+
+	file->lines = malloc(file->numberOfLines * sizeof(char*));
+
 	do {
-		if ((nread = read(fd, buf, BUFSIZ)) < 0) {
-			fprintf(stderr, "cat: cannot read %s\n", filename);
-			return;
-		}
-		
-		n = nread;
-		
-		int i = 0;
-		for(i=1; i <= resp.lines; i++) {
+		bytesRead = readFromFile(file, buffer, BUFSIZ);
+				
+		int currentLineIndex = 0;
+		for(currentLineIndex=1; currentLineIndex <= file->numberOfLines; currentLineIndex++) {
 
-			fileLines[i-1] = malloc(BUFSIZ*sizeof(char));
+			file->lines[currentLineIndex-1] = malloc(BUFSIZ*sizeof(char));
 
-			int j = 0;
-			for (j=breakpoints[i-1]; j <= breakpoints[i]; j++) {
-				if (buf[j] != '\n'){
-					/*dar uma olhada memcpy, remove o uso do \0*/
-
-					char cToStr[2] = {buf[j], '\0'};
-					strcat(fileLines[i-1], cToStr);
+			int linebreakIndex = 0;
+			for (linebreakIndex=file->linebreaks[currentLineIndex-1]; linebreakIndex <= file->linebreaks[currentLineIndex]; linebreakIndex++) {
+				if (buffer[linebreakIndex] != '\n'){
+					char cToStr[2] = {buffer[linebreakIndex], '\0'};
+					strcat(file->lines[currentLineIndex-1], cToStr);
 				}
 			}
 		}
 		
-	} while (n == BUFSIZ);
+	} while (bytesRead == BUFSIZ);
 
-	sortLines(fileLines, resp.lines);
-	
+	log("Extracted lines from file!\n");
+}
+
+static void sortLines(File* file)
+{
+	log("Sorting lines...\n");
+
+	char temp[BUFSIZ];
+
+	int i=0, j=0;
+
+	for(i=0; i<file->numberOfLines; i++){
+		for(j=0; j<file->numberOfLines-1-i; j++){
+			if(strcmp(file->lines[j], file->lines[j+1]) > 0){
+				strcpy(temp, file->lines[j]);
+				strcpy(file->lines[j], file->lines[j+1]);
+				strcpy(file->lines[j+1], temp);
+			}
+		}
+	}
+
+	log("Sorted lines!\n");
+}
+
+static void printLines(File* file) {
+	log("Printing lines...\n");
+
 	int k = 0;
-	for(k=0; k < resp.lines; k++) {
-		printf("%s\n", fileLines[k]);
+	for(k=0; k < file->numberOfLines; k++) {
+		printf("%s\n", file->lines[k]);
 	}
 
-	/*FREE do Malloc*/
+	log("Printed lines!\n");
+}
 
-	close(fd);
+static void freeFile(File* file) {
+	log("Freeing file...\n");
 
-	for(k=0; k < resp.lines; k++) {
-		free(fileLines[k]);
+	close(file->pointer);
+
+	int k = 0;
+	for(k=0; k < file->numberOfLines; k++) {
+		free(file->lines[k]);
 	}
 
-	free(fileLines);
-	free(breakpoints);
+	free(file->lines);
+	free(file->linebreaks);
+
+	log("Freed file!\n");
+}
+
+static void resetFile(File* file) { 
+	close(file->pointer);
+	openFile(file, file->name, file->mode);
+}
+
+static void sort(char *filename)
+{
+	File file;
+	
+	log("--- OPEN FILE ---\n\n");
+    openFile(&file, filename, O_RDONLY);
+	log("\n");
+	
+	log("--- GET NUMBER OF LINES ---\n\n");
+	getNumberOfLines(&file);
+	log("\n");
+
+	log("--- GET LINE BREAKS ---\n\n");
+	getLineBreaks(&file);
+	log("\n");
+
+	log("--- EXTRACT LINES ---\n\n");
+	extractLinesFromFile(&file);
+	log("\n");
+
+	log("--- SORT LINES ---\n\n");
+	sortLines(&file);
+	log("\n");
+
+	log("--- OPEN FILE ---\n\n");
+	printLines(&file);
+	log("\n");
+
+	log("--- FREE FILE ---\n\n");
+	freeFile(&file);
+	log("\n");
 }
 
 static void version(void)
 {
-	printf("cat (Nanvix Coreutils) %d.%d\n\n", VERSION_MAJOR, VERSION_MINOR);
+	printf("sort (Nanvix Coreutils) %d.%d\n\n", VERSION_MAJOR, VERSION_MINOR);
 	printf("Copyright(C) 2011-2014 Pedro H. Penna\n");
 	printf("This is free software under the "); 
 	printf("GNU General Public License Version 3.\n");
@@ -207,8 +292,8 @@ static void version(void)
 
 static void usage(void)
 {
-	printf("Usage: cat [options] [files]\n\n");
-	printf("Brief: Concatenates files.\n\n");
+	printf("Usage: sort [options] [files]\n\n");
+	printf("Brief: Print file content in alphabetical order.\n\n");
 	printf("Options:\n");
 	printf("  --help    Display this information and exit\n");
 	printf("  --version Display program version and exit\n");
@@ -263,14 +348,14 @@ int main(int argc, char *const argv[])
 			{
 				if (stat(filename, &st) == -1)
 				{
-					fprintf(stderr, "cat: cannot stat %s\n", filename);
+					fprintf(stderr, "%s: cannot stat %s\n", COMMAND_NAME, filename);
 					continue;
 				}
 				
 				/* File is directory. */
 				if (S_ISDIR(st.st_mode))
 				{
-					fprintf(stderr, "cat: %s is a directory\n", filename);
+					fprintf(stderr, "%s: %s is a directory\n", COMMAND_NAME, filename);
 					continue;
 				}
 			}

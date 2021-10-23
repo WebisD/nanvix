@@ -95,6 +95,11 @@ static void getargs(int argc, char *const argv[])
 	}
 }
 
+int rmdir()
+{
+	return -1;
+}
+
 /*
  * Creates a link between two files
  */
