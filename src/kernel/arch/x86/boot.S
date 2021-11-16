@@ -57,7 +57,7 @@ mboot_header:
  *----------------------------------------------------------------------------*/
 
 /*
- * Kernel entry point.
+ * Kernel entry point. Boot do sistema operacional
  */
 start:	
 	cmpl $1, 20(%ebx)

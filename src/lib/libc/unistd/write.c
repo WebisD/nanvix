@@ -29,10 +29,10 @@ ssize_t write(int fd, const void *buf, size_t n)
 	ssize_t ret;
 	
 	__asm__ volatile (
-		"int $0x80"
-		: "=a" (ret)
-		: "0" (NR_write),
-		  "b" (fd),
+		"int $0x80" // Interrupção do programa no modo usuário que notifica o S.O. / para a execução do programa e transfere para o S.O. recupera as informaçṍes dessa informações
+		: "=a" (ret)       // retorna     
+		: "0" (NR_write), // Qual a interrupção invocada
+		  "b" (fd),       // Parametros enviados
 		  "c" (buf),
 		  "d" (n)
 	);

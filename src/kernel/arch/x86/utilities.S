@@ -199,7 +199,7 @@ physcpy.loop:
  *----------------------------------------------------------------------------*/
 
 /*
- * Switches execution to other process.
+ * Switches execution to other process. Troca de contexto dos processos
  */
 switch_to:
 	movl 4(%esp), %ecx

@@ -60,7 +60,7 @@ PUBLIC void resume(struct process *proc)
 }
 
 /**
- * @brief Yields the processor.
+ * @brief Yields the processor.  Troca de contexto, decide qual processo vai pro cpu
  */
 PUBLIC void yield(void)
 {
@@ -97,6 +97,7 @@ PUBLIC void yield(void)
 		/*
 		 * Process with higher
 		 * waiting time found.
+		 * Processo com maior tempo de espera
 		 */
 		if (p->counter > next->counter)
 		{
