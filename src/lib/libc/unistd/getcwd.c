@@ -23,7 +23,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <fcntl.h>
 /*
  * Looks up for a specific directory entry.
  */
@@ -133,7 +133,7 @@ char *getcwd(char *buf, size_t size)
 		
 		/* Open upper directory. */
 		strcat(curdir, "/..");
-		if ((dirp = opendir(curdir)) == NULL)
+		if ((dirp = opendir(curdir, O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO)) == NULL)
 			goto error0;
 			
 		/* Get lower directory name. */

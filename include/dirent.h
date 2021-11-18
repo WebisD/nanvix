@@ -59,7 +59,7 @@
 	/*
 	 * Opens a directory stream.
 	 */
-	extern DIR *opendir(const char *dirname);
+	extern DIR *opendir(const char *dirname, int oflag, mode_t mode);
 	
 	/*
 	 * Reads a directory.

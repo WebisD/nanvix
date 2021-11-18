@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <fcntl.h>
+#include <sys/stat.h>
 /* Software versioning. */
 #define VERSION_MAJOR 1 /* Major version. */
 #define VERSION_MINOR 0 /* Minor version. */
@@ -46,7 +48,7 @@ int ls(const char *pathname)
 	char filename[NAME_MAX + 1]; /* Working file name.       */
 	
 	/* Open directory. */
-	if ((dirp = opendir(pathname)) == NULL)
+	if ((dirp = opendir(pathname, O_RDONLY, S_IRWXU|S_IRWXG|S_IRWXO)) == NULL)
 	{
 		fprintf(stderr, "ls: cannot open %s\n", pathname);
 		return (errno);

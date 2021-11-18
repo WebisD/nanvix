@@ -18,10 +18,15 @@
  */
 
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 
 /* Software versioning. */
 #define VERSION_MAJOR 1 /* Major version. */
@@ -96,15 +101,27 @@ static void getargs(int argc, char *const argv[])
 	}
 }
 
-// int mkdir(char* dirname, mode_t mode) 
-// {
-// 	return -1;
-// }
+int mkdir(char* dirname, mode_t mode) 
+{
+	DIR* dd;
 
-int mkdir() 
+	dd = opendir(dirname, O_CREATD, mode);
+
+	printf("%d\n", dd);
+	if (dd == NULL)
+	{
+		fprintf(stderr, "error: failed to create folder\n");
+		return (errno);
+	}
+	closedir(dd);
+	//return (utime(dirname, NULL));
+	return 0;
+}
+
+/*int mkdir() 
 {
 	return -1;
-}
+}*/
 
 /*
  * Creates directories
@@ -117,8 +134,8 @@ int main(int argc, char *const argv[])
 
 	/* Failed to mkdir(). */
 	/* S_IRWXU|S_IRWXG|S_IRWXO */
-	// if (mkdir(args.dirname, S_IRWXU|S_IRWXG|S_IRWXO) < 0)
-	if (mkdir() < 0)
+	if (mkdir(args.dirname, S_IRWXU|S_IRWXG|S_IRWXO) < 0)
+	//if (mkdir() < 0)
 	{
 		fprintf(stderr, "mkdir: cannot mkdir()\n");
 		return (EXIT_FAILURE);

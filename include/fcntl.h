@@ -26,6 +26,8 @@
 	#define O_WRONLY     01 /* Write only.     */
 	#define O_RDWR       02 /* Read and write. */
 
+	#define O_CREATD 00300 /* Create directory if it does not exist */
+
 	/* File creation flags. */
 	#define O_CREAT  00100 /* Create file if it does not exist.   */
 	#define O_EXCL	 00200 /* Exclusive use flag.                 */

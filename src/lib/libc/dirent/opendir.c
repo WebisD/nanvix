@@ -26,7 +26,7 @@
 /*
  * Opens a directory stream.
  */
-DIR *opendir(const char *dirname)
+DIR *opendir(const char *dirname, int oflag, mode_t mode)
 {
 	int fd;    /* Underlying file descriptor. */
 	DIR *dirp; /* Working directory stream.   */
@@ -48,7 +48,7 @@ DIR *opendir(const char *dirname)
 found:
 	
 	/* Open directory. */
-	if ((fd = open(dirname, O_RDONLY)) < 0)
+	if ((fd = open(dirname, oflag, mode)) < 0)
 		return (NULL);
 	
 	dirp->fd = fd;
