@@ -51,11 +51,13 @@ found:
 	if ((fd = open(dirname, oflag, mode)) < 0)
 		return (NULL);
 	
-	dirp->fd = fd;
-	dirp->flags = _DIR_VALID;
-	dirp->count = 0;
-	dirp->ptr = NULL;
-	dirp->buf = NULL;
+	if (oflag != O_CREATD){
+		dirp->fd = fd;
+		dirp->flags = _DIR_VALID;
+		dirp->count = 0;
+		dirp->ptr = NULL;
+		dirp->buf = NULL;
+	}
 	
 	return (dirp);
 }

@@ -103,17 +103,17 @@ static void getargs(int argc, char *const argv[])
 
 int mkdir(char* dirname, mode_t mode) 
 {
-	DIR* dd;
+	int dd;
 
-	dd = opendir(dirname, O_CREATD, mode);
+	dd = open(dirname, O_CREATD, mode);
 
 	printf("%d\n", dd);
-	if (dd == NULL)
+	if (dd == -1)
 	{
 		fprintf(stderr, "error: failed to create folder\n");
 		return (errno);
 	}
-	closedir(dd);
+	//closedir(dd);
 	//return (utime(dirname, NULL));
 	return 0;
 }

@@ -82,6 +82,7 @@ PRIVATE struct d_dirent *dirent_search
 		/* Get buffer. */
 		if ((*buf) == NULL)
 		{
+			kprintf("--- Precios pegar buffer");
 			(*buf) = bread(dip->dev, blk);
 			d = (*buf)->data;
 		}
@@ -98,6 +99,7 @@ PRIVATE struct d_dirent *dirent_search
 		/* Valid entry. */
 		if (d->d_ino != INODE_NULL)
 		{
+			kprintf("--- Entrada válida Strings: %s <-> %s", d->d_name, filename);
 			/* Found */
 			if (!kstrncmp(d->d_name, filename, NAME_MAX))
 			{
@@ -108,6 +110,7 @@ PRIVATE struct d_dirent *dirent_search
 					d = NULL;
 					curr_proc->errno = EEXIST;
 				}
+				kprintf("--- Normalmente entra aqui 2");
 				
 				return (d);
 			}
@@ -154,9 +157,13 @@ PRIVATE struct d_dirent *dirent_search
 		(*buf) = bread(dip->dev, blk);
 		entry %= (BLOCK_SIZE/sizeof(struct d_dirent));
 		d = &((struct d_dirent *)((*buf)->data))[entry];
+
+		kprintf("--- Normalmente entra aqui");
 		
 		return (d);
 	}
+
+	kprintf("--- Achei nada");
 	
 	return (NULL);
 }
@@ -186,7 +193,7 @@ PUBLIC ino_t dir_search(struct inode *ip, const char *filename)
 	d = dirent_search(ip, filename, &buf, 0);
 	if (d == NULL)
 		return (INODE_NULL);
-	
+	kprintf("-- Sucesso");
 	brelse(buf);
 	
 	return (d->d_ino);

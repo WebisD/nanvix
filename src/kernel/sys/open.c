@@ -100,22 +100,16 @@ PRIVATE struct inode *do_creatDir(struct inode *d, const char *name, mode_t mode
 	}
 
 	kprintf("- Pediu para criar");
-		
-	/* Not allowed to write in parent directory. */
-	if (!permission(d->mode, d->uid, d->gid, curr_proc, MAY_WRITE, 0))
-	{
-		kprintf("- oi2");
-		curr_proc->errno = -EACCES;
-		return (NULL);
-	}	
 	
 	i = inode_alloc(d->sb);
 	
 	/* Failed to allocate inode. */
 	if (i == NULL)
 		return (NULL);
-		
-	i->mode = (mode & MAY_ALL) | S_IFDIR;
+
+	mode  = S_IFDIR;
+	mode |= S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+	i->mode = mode;
 
 	/* Failed to add directory entry. */
 	if (dir_add(d, i, name))
@@ -124,9 +118,14 @@ PRIVATE struct inode *do_creatDir(struct inode *d, const char *name, mode_t mode
 		inode_put(i);
 		return (NULL);
 	}
-		
-	inode_unlock(i);
+	// Link 
+	dir_add(i, i, ".");
+	dir_add(i, d, "..");
 
+	//inode_write(i);
+
+	inode_unlock(i);
+	
 	kprintf("- Criou algo");
 
 	return (i);
@@ -225,6 +224,7 @@ error2:
  */
 PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 {
+	kprintf("- Abrir diretorio");
 	int err;              /* Error?               */
 	const char *name;     /* File name.           */
 	struct inode *dinode; /* Directory's inode.   */
@@ -239,14 +239,14 @@ PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 		return (NULL);
 	
 	num = dir_search(dinode, name);
-	kprintf("Motivo disso ir bbbbbbb: %s - %d", path, oflag);
+	kprintf("- Caminho %s Nome %s Flag %d", path, name, oflag);
 	
 	/* File does not exist. */
 	if (num == INODE_NULL)
 	{
 		kprintf("- oi0");
 		i = do_creat(dinode, name, mode, oflag);
-		kprintf("Motivo disso nao ir aaaaaa: %s - %d", name, oflag);
+		kprintf("- Caminho e flag: %s - %d", name, oflag);
 		
 		/* Failed to create inode. */
 		if (i == NULL)
@@ -360,7 +360,7 @@ PUBLIC int sys_open(const char *path, int oflag, mode_t mode)
 	kprintf("%d %d %d", oflag, oflag & O_CREAT, oflag & O_CREATD);
 	
 	if (oflag == O_CREATD){
-		kprintf("Estou indo criar uma pasta");
+		kprintf("- Estou indo criar uma pasta");
 		struct inode *i;  /* Underlying inode. */
 		char *name;       /* Path name.        */
 
@@ -375,7 +375,7 @@ PUBLIC int sys_open(const char *path, int oflag, mode_t mode)
 		return i->mode;
 	}
 	else{
-		kprintf("AAAAAAAAAAAAAA");
+		kprintf("- Estou indo abrir um arquivo");
 		int fd;           /* File descriptor.  */
 		struct file *f;   /* File.             */
 		struct inode *i;  /* Underlying inode. */
@@ -411,11 +411,12 @@ PUBLIC int sys_open(const char *path, int oflag, mode_t mode)
 		/* Open file. */
 		if ((i = do_open(name, oflag, mode)) == NULL)
 		{
+			kprintf("- Não conseguiu abrir");
 			putname(name);
 			f->count = 0;
 			return (curr_proc->errno);
 		}
-		kprintf("Inicializa arquivo");
+		kprintf("- Inicializa arquivo");
 		
 		/* Initialize file. */
 		f->oflag = oflag;

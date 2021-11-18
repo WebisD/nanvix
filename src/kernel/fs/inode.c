@@ -813,11 +813,16 @@ PUBLIC struct inode *inode_name(const char *pathname)
 	struct inode *inode; /* Working inode. */
 	
 	inode = inode_dname(pathname, &name);
+
+	kprintf("- Converts a path name to inode");
+	kprintf("- path: %s e name %s", pathname, name);
 	
 	/* Failed to get directory inode. */
 	if (inode == NULL)
 		return (NULL);
-		
+	
+	kprintf("- Inode nao nulooo");
+
 	/* Special treatment for the root directory. */
 	if (!kstrcmp(name,"/"))
 		num = curr_proc->root->num;
@@ -831,6 +836,7 @@ PUBLIC struct inode *inode_name(const char *pathname)
 		curr_proc->errno = -ENOENT;
 		return (NULL);
 	}
+	kprintf("- Num nao nulooo");
 
 	dev = inode->dev;	
 	inode_put(inode);
