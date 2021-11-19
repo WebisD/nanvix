@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "dirent.h": "c",
+        "stat.h": "c",
+        "file.h": "c",
+        "fcntl.h": "c",
+        "features.h": "c",
+        "fs.h": "c",
+        "stdlib.h": "c",
+        "string.h": "c",
+        "stdio.h": "c",
+        "stdarg.h": "c"
+    }
+}

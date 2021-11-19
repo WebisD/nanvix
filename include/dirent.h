@@ -51,7 +51,7 @@
 		struct dirent *buf; /* Buffer of directory entries.      */
 	} DIR;
 	
-	/*
+	/*file
 	 * Closes a directory stream.
 	 */
 	extern int closedir(DIR *dirp);

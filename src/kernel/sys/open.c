@@ -19,6 +19,7 @@
 
 #include <nanvix/const.h>
 #include <nanvix/dev.h>
+#include <nanvix/klib.h>
 #include <nanvix/fs.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -33,16 +34,30 @@
 	((ACCMODE(o) == O_WRONLY) ? MAY_WRITE :            \
 	(MAY_READ | ((o & O_TRUNC) ? MAY_WRITE : 0))))     \
 
+#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
+#define BYTE_TO_BINARY(byte)  \
+	(byte & 0x80 ? '1' : '0'), \
+	(byte & 0x40 ? '1' : '0'), \
+	(byte & 0x20 ? '1' : '0'), \
+	(byte & 0x10 ? '1' : '0'), \
+	(byte & 0x08 ? '1' : '0'), \
+	(byte & 0x04 ? '1' : '0'), \
+	(byte & 0x02 ? '1' : '0'), \
+	(byte & 0x01 ? '1' : '0') 
+
 /*
  * Creates a file.
  */
 PRIVATE struct inode *do_creat(struct inode *d, const char *name, mode_t mode, int oflag)
 {
+	// kprintf("inicio do do_creat()\n");
+
 	struct inode *i;
 	
 	/* Not asked to create file. */
 	if (!(oflag & O_CREAT))
 	{
+		// kprintf("nao pediu para criar arquivo\n");
 		curr_proc->errno = -ENOENT;
 		return (NULL);
 	}
@@ -50,6 +65,7 @@ PRIVATE struct inode *do_creat(struct inode *d, const char *name, mode_t mode, i
 	/* Not allowed to write in parent directory. */
 	if (!permission(d->mode, d->uid, d->gid, curr_proc, MAY_WRITE, 0))
 	{
+		// kprintf("Sem permissao para escrever no pai\n");
 		curr_proc->errno = -EACCES;
 		return (NULL);
 	}	
@@ -57,20 +73,39 @@ PRIVATE struct inode *do_creat(struct inode *d, const char *name, mode_t mode, i
 	i = inode_alloc(d->sb);
 	
 	/* Failed to allocate inode. */
-	if (i == NULL)
+	if (i == NULL) {
+		// kprintf("Falha na hora de alocar inode\n");
 		return (NULL);
-		
-	i->mode = (mode & MAY_ALL & ~curr_proc->umask) | S_IFREG;
+	}
+
+
+	if (S_ISDIR(mode)) {
+		// kprintf("eh para criar diretorio\n");
+		i->mode = (mode & ~curr_proc->umask) | oflag | S_IFDIR;	
+	}
+	else {
+		// kprintf("eh para criar arquivo\n");
+		i->mode = (mode & MAY_ALL & ~curr_proc->umask) | S_IFREG;
+	}
 
 	/* Failed to add directory entry. */
 	if (dir_add(d, i, name))
 	{
+		// kprintf("Falha na hora de adicionar entrada de diretorio\n");
 		inode_put(i);
 		return (NULL);
+	}
+
+	if (S_ISDIR(mode)) {
+		// kprintf("dir_add()'s\n");
+		dir_add(i, i, ".");
+		dir_add(i, d, "..");
 	}
 		
 	inode_unlock(i);
 	
+	// kprintf("fim do do_creat()\n");
+
 	return (i);
 }
 
@@ -79,6 +114,8 @@ PRIVATE struct inode *do_creat(struct inode *d, const char *name, mode_t mode, i
  */
 PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 {
+	// kprintf("inicio do do_open()\n");
+
 	int err;              /* Error?               */
 	const char *name;     /* File name.           */
 	struct inode *dinode; /* Directory's inode.   */
@@ -88,15 +125,19 @@ PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 	
 	dinode = inode_dname(path, &name);
 	
+	// kprintf("parent directory name -> path: %s, name: %s\n", path, name);
+
 	/* Failed to get directory. */
 	if (dinode == NULL)
 		return (NULL);
 	
 	num = dir_search(dinode, name);
+	// kprintf("num: %d\n", num);
 	
 	/* File does not exist. */
 	if (num == INODE_NULL)
 	{
+		// kprintf("arquivo nao existe\n");
 		i = do_creat(dinode, name, mode, oflag);
 		
 		/* Failed to create inode. */
@@ -129,6 +170,7 @@ PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 	/* Not allowed. */
 	if (!permission(i->mode, i->uid, i->gid, curr_proc, PERM(oflag), 0))
 	{
+		// kprintf("nao tenho permissao\n");
 		curr_proc->errno = -EACCES;
 		goto error;
 	}
@@ -170,9 +212,11 @@ PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 	/* Directory. */
 	else if (S_ISDIR(i->mode))
 	{
+		// kprintf("tentando abrir diretorio!\n");
 		/* Directories are not writable. */
 		if (ACCMODE(oflag) != O_RDONLY)
 		{
+			// kprintf("diretorio nao eh writable!\n");
 			curr_proc->errno = -EISDIR;
 			goto error;
 		}
@@ -182,7 +226,10 @@ PRIVATE struct inode *do_open(const char *path, int oflag, mode_t mode)
 	
 	return (i);
 
+	// kprintf("fim do do_open()\n");
+
 error:
+	// kprintf("ERRO!\n");
 	inode_put(i);
 	return (NULL);
 	
@@ -227,7 +274,8 @@ PUBLIC int sys_open(const char *path, int oflag, mode_t mode)
 	
 	/* Open file. */
 	if ((i = do_open(name, oflag, mode)) == NULL)
-	{
+	{	
+		// kprintf("falha no do_open()\n");
 		putname(name);
 		f->count = 0;
 		return (curr_proc->errno);

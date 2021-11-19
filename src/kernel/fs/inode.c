@@ -807,6 +807,8 @@ error0:
  */
 PUBLIC struct inode *inode_name(const char *pathname)
 {
+	// kprintf("inicio do inode_name\n");
+
 	dev_t dev;           /* Device number. */
 	ino_t num;           /* Inode number.  */
 	const char *name;    /* File name.     */
@@ -814,19 +816,30 @@ PUBLIC struct inode *inode_name(const char *pathname)
 	
 	inode = inode_dname(pathname, &name);
 	
+	// kprintf("pathname: %s - name: %s\n", pathname, name);
+
 	/* Failed to get directory inode. */
-	if (inode == NULL)
+	if (inode == NULL) {
+		// kprintf("failed to get inode\n");
 		return (NULL);
+	}
 		
 	/* Special treatment for the root directory. */
-	if (!kstrcmp(name,"/"))
+	if (!kstrcmp(name,"/")) {
+		// kprintf("special treatment!\n");
 		num = curr_proc->root->num;
-	else
+	}
+	else{
+		// kprintf("no special treatment\n");
 		num = dir_search(inode, name);
+	}
+
+	// kprintf("%s - num: %d", name, num);
 
 	/* File not found. */
 	if (num == INODE_NULL)
 	{	
+		// kprintf("file not found\n");
 		inode_put(inode);
 		curr_proc->errno = -ENOENT;
 		return (NULL);
@@ -834,6 +847,8 @@ PUBLIC struct inode *inode_name(const char *pathname)
 
 	dev = inode->dev;	
 	inode_put(inode);
+
+	// kprintf("fim do inode_name\n");
 	
 	return (inode_get(dev, num));
 }

@@ -21,6 +21,7 @@
 #include <nanvix/fs.h>
 #include <nanvix/pm.h>
 #include <errno.h>
+#include <nanvix/klib.h>
 
 /*
  * Changes working directory.
@@ -32,12 +33,15 @@ PUBLIC int sys_chdir(const char *path)
 	inode = inode_name(path);
 	
 	/* Failed to get inode. */
-	if (inode == NULL)
+	if (inode == NULL) {
+		// kprintf("failed to get inode\n");
 		return (curr_proc->errno);
+	}
 	
 	/* Not a directory. */
 	if (!S_ISDIR(inode->mode))
 	{
+		// kprintf("inode is not a directory\n");
 		inode_put(inode);
 		return (-ENOTDIR);
 	}

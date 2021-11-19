@@ -22,6 +22,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <nanvix/fs.h>
+#include <nanvix/syscall.h>
+#include <errno.h>
 
 /* Software versioning. */
 #define VERSION_MAJOR 1 /* Major version. */
@@ -96,14 +101,35 @@ static void getargs(int argc, char *const argv[])
 	}
 }
 
-// int mkdir(char* dirname, mode_t mode) 
-// {
-// 	return -1;
-// }
-
-int mkdir() 
+ssize_t call_sys_open(const char *path, int oflag, mode_t mode)
 {
-	return -1;
+	ssize_t ret;
+	
+	__asm__ volatile (
+		"int $0x80"
+		: "=a" (ret)
+		: "0" (NR_open),
+		  "b" (path),
+		  "c" (oflag),
+		  "d" (mode)
+	);
+	
+	/* Error. */
+	if (ret < 0)
+	{
+		errno = -ret;
+		return (-1);
+	}
+	
+	return ((ssize_t)ret);
+}
+
+int mkdir(const char* name, int flag) 
+{
+	//open file
+	call_sys_open(name, flag, S_IFDIR);
+
+	return 0;
 }
 
 /*
@@ -113,12 +139,8 @@ int main(int argc, char *const argv[])
 {
 	getargs(argc, argv);
 	
-	fprintf(stderr, "Main mkdir\n");
-
 	/* Failed to mkdir(). */
-	/* S_IRWXU|S_IRWXG|S_IRWXO */
-	// if (mkdir(args.dirname, S_IRWXU|S_IRWXG|S_IRWXO) < 0)
-	if (mkdir() < 0)
+	if (mkdir(args.dirname, S_IRWXU|S_IRWXG|S_IRWXO) < 0)
 	{
 		fprintf(stderr, "mkdir: cannot mkdir()\n");
 		return (EXIT_FAILURE);

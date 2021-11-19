@@ -114,20 +114,28 @@ PUBLIC mode_t permission(mode_t mode, uid_t uid, gid_t gid, struct process *proc
 	mode &= mask;
 	
 	/* Super user. */
-	if (IS_SUPERUSER(proc))
+	if (IS_SUPERUSER(proc)) {
+		// kprintf("super user\n");
 		mode &= S_IRWXU | S_IRWXG | S_IRWXO;
+	}
 	
 	/* Owner user. */
-	else if ((proc->uid == uid) || ((!oreal && proc->euid == uid)))
+	else if ((proc->uid == uid) || ((!oreal && proc->euid == uid))){
+		// kprintf("owner user\n");
 		mode &= S_IRWXU | S_IRWXG | S_IRWXO;
+	}
 	
 	/* Owner's group user. */
-	else if ((proc->gid == gid) || ((!oreal && proc->egid == gid)))
+	else if ((proc->gid == gid) || ((!oreal && proc->egid == gid))){
+		// kprintf("owner group user\n");
 		mode &= S_IRWXG | S_IRWXO;
+	}
 	
 	/* Other user. */
-	else
+	else {
+		// kprintf("other user\n");
 		mode &= S_IRWXO;
+	}
 	
 	return (mode);
 }

@@ -144,10 +144,6 @@
  *                            Super Block Library                             *
  *============================================================================*/
 
-	/**
-	 * @defgroup Superblock Superblock Module
-	 */
-	/**@{*/
 
 	/**
 	 * @brief Opaque pointer to a in-core superblock.
